@@ -144,10 +144,6 @@ jobs:
 
   build-mac:
     name: build-mac
-    # WHY THIS CHANGED: the runner was previously macos-13 (Intel, EOL).
-    # macos-latest now resolves to macos-14 (Apple Silicon / arm64), which
-    # is the current supported runner. Using macos-latest ensures we always
-    # build on a supported OS image and receive future upgrades automatically.
     runs-on: macos-latest
 
     steps:
@@ -167,33 +163,11 @@ jobs:
           brew install qt@5
 
       - name: Setup JDK
-        # WHY THIS WAS ADDED: macOS runners provide a system Java (currently
-        # Java 21 via Homebrew or Xcode toolchain) that is on PATH by default.
-        # Java 21 no longer supports -source 7 / -target 7 (removed in JEP 182).
-        # Even after fixing the CMake source-level flags to 8, we still need a
-        # JDK that is explicitly on PATH so that CMake's FindJava / UseJava
-        # modules pick up the right javac. Without this step, the macOS runner
-        # would use whatever Java happens to be first on PATH, which may or may
-        # not be compatible with the build.
-        # We pin to Zulu 11 because:
-        #  - It supports -source 8 / -target 8 (all values 8+ are accepted).
-        #  - It is LTS and widely available via the Zulu distribution.
-        #  - It is the same JDK family used by the Linux and Windows jobs.
-        # actions/setup-java automatically sets JAVA_HOME and prepends the
-        # chosen JDK's bin/ directory to PATH, so javac used during `make`
-        # is deterministic and consistent across CI runs.
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '11'
 
-      # WHY CMAKE_POLICY_VERSION_MINIMUM=3.5 WAS ADDED to the cmake invocation:
-      # CMake 3.27+ hard-errors when a project's cmake_minimum_required() is
-      # below 3.5. The vendored submodules (libnbtplusplus, quazip) still
-      # declare cmake_minimum_required(VERSION 3.1), which is below that
-      # threshold. This flag tells CMake to treat such declarations as if they
-      # requested 3.5, suppressing the fatal error without modifying third-party
-      # submodule files.
       - name: Build
         run: |
           mkdir build
