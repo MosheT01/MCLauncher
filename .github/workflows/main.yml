@@ -12,20 +12,17 @@ on:
 jobs:
   build-linux:
     name: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@main
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
 
       - name: Install Dependencies
         run: |
-          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 3B4FE6ACC0B21F32
-          sudo add-apt-repository 'deb http://dk.archive.ubuntu.com/ubuntu/ bionic main'
-          sudo add-apt-repository 'deb http://dk.archive.ubuntu.com/ubuntu/ bionic universe'
-          sudo apt update
-          sudo apt install libgl1-mesa-dev qttools5-dev g++-5 gcc-5
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev qtbase5-dev qttools5-dev
 
       - name: Build
         run: |
@@ -33,8 +30,6 @@ jobs:
           mkdir build
           cd build
           cmake \
-           -DCMAKE_C_COMPILER=/usr/bin/gcc-5 \
-           -DCMAKE_CXX_COMPILER=/usr/bin/g++-5 \
            -DCMAKE_BUILD_TYPE=Release \
            -DLauncher_NOTIFICATION_URL:STRING=https://files.multimc.org/notifications.json \
            -DCMAKE_INSTALL_PREFIX:PATH=/home/runner/UltimMC/UltimMC \
@@ -66,7 +61,7 @@ jobs:
           chmod +x /home/runner/UltimMC/UltimMC/bin/UltimMC
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@main
+        uses: actions/upload-artifact@v4
         with:
           name: mmc-cracked-lin64
           path: /home/runner/UltimMC
@@ -76,81 +71,33 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@main
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
 
-      - name: Cache Qt
-        uses: actions/cache@main
-        id: qt-cached
-        with:
-          path: "D:/Qt"
-          key: ${{ runner.os }}-qt56-installed-d
-
-      - name: Cache Qt Installer
-        uses: actions/cache@main
-        if: steps.qt-cached.outputs.cache-hit != 'true'
-        id: installer-cached
-        with:
-          path: "installer.exe"
-          key: ${{ runner.os }}-qt56-installer
-
-      - name: Create QtAccount File
-        if: steps.qt-cached.outputs.cache-hit != 'true'
-        run: |
-          mkdir C:/Users/runneradmin/AppData/Roaming/Qt/
-          curl https://gist.github.com/Neptune650/1086e0a3126be6a66580b71afcf8bd99/raw/797d8b90edf07ce88f265b38a573cc6b1fb45bfb/qtaccount.txt --output C:/Users/runneradmin/AppData/Roaming/Qt/qtaccount.ini
-
-      - name: Download Qt Installer
-        if: steps.installer-cached.outputs.cache-hit != 'true' && steps.qt-cached.outputs.cache-hit != 'true'
-        run: curl https://download.qt.io/new_archive/qt/5.6/5.6.3/qt-opensource-windows-x86-mingw492-5.6.3.exe --output installer.exe
-
-      - name: Download Qt non-Interactive Script
-        if: steps.qt-cached.outputs.cache-hit != 'true'
-        run: curl https://gist.githubusercontent.com/Neptune650/aa6c051abc17e7d9d609add7f6dfd16a/raw/074dedb7525c0ffc010b39871615b008c2efbcd6/qt-installer-noninteractive.qs --output nonInteractive.qs
-
       - name: Install Qt
-        if: steps.qt-cached.outputs.cache-hit != 'true'
-        shell: cmd
-        run: installer.exe -v --script nonInteractive.qs --silent
-
-      - name: Setup CMake
-        run: |
-          curl -L https://github.com/Kitware/CMake/releases/download/v3.30.4/cmake-3.30.4-windows-i386.zip -o cmake.zip
-          unzip cmake.zip
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '5.15.2'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_mingw81'
+          tools: 'tools_mingw,qt.tools.win64_mingw810'
 
       - name: Setup JDK
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '8'
-          architecture: x86
+          architecture: x64
 
-      - name: Setup zlib
-        run: |
-          mkdir zlib
-          cd zlib
-          C:\msys64\usr\bin\wget.exe -O zlib.zip https://downloads.sourceforge.net/project/gnuwin32/zlib/1.2.3/zlib-1.2.3-bin.zip
-          C:\msys64\usr\bin\wget.exe -O zliblibs.zip https://downloads.sourceforge.net/project/gnuwin32/zlib/1.2.3/zlib-1.2.3-lib.zip
-          unzip zlib.zip
-          unzip zliblibs.zip
-
-      - name: Setup OpenSSL
-        run: |
-          mkdir OpenSSL
-          cd OpenSSL
-          curl -L https://files.catbox.moe/ctwswu.dll -o libeay32.dll
-          curl -L https://files.catbox.moe/ie9e77.dll -o ssleay32.dll
+      - name: Install ZLIB
+        shell: cmd
+        run: C:\msys64\usr\bin\pacman -Sy --noconfirm mingw-w64-x86_64-zlib
 
       - name: Build
         shell: cmd
-        if: steps.build-cached.outputs.cache-hit != 'true'
         run: |
-          for /f "tokens=*" %%n in ('powershell -NoLogo -Command "$(ls $pwd\cmake-*-windows-i386\bin).Fullname"') do @(set PATHCM=%%n)
-          set PATH=D:\Qt\5.6.3\mingw49_32\bin;D:\Qt\Tools\mingw492_32\bin;
-          set PATH=%CD%\zlib;%CD%\zlib\bin;%CD%\zlib\lib;%CD%\zlib\include;%PATH%
-          set PATH=%CD%\OpenSSL;%PATH%
-          set PATH=%PATHCM%;%PATH%
           mkdir build
           cd build
           cmake ^
@@ -159,39 +106,26 @@ jobs:
            -DCMAKE_BUILD_TYPE=Release ^
            -DLauncher_NOTIFICATION_URL:STRING=https://files.multimc.org/notifications.json ^
            -DCMAKE_INSTALL_PREFIX:PATH="D:/UltimMC/UltimMC" ^
-           -DCMAKE_PREFIX_PATH="D:\Qt\5.6.3\mingw49_32" ^
-           -DQt5_DIR="D:\Qt\5.6.3\mingw49_32" ^
            -DLauncher_UPDATER_BASE=https://files.multimc.org/update/ ^
            -DLauncher_PASTE_EE_API_KEY:STRING=utLvciUouSURFzfjPxLBf5W4ISsUX4pwBDF7N1AfZ ^
            -DLauncher_ANALYTICS_ID:STRING=UA-87731965-2 ^
            -DLauncher_LAYOUT=win-bundle ^
-           -DLauncher_BUILD_PLATFORM=win32 ^
+           -DLauncher_BUILD_PLATFORM=win64 ^
            -DLauncher_BUG_TRACKER_URL=https://github.com/UltimMC/Launcher/issues ^
            -DLauncher_EMBED_SECRETS=On ^
+           -DZLIB_ROOT="C:/msys64/mingw64" ^
            -G "MinGW Makefiles" ^
            ..
 
       - name: Compile
         shell: cmd
         run: |
-          for /f "tokens=*" %%n in ('powershell -NoLogo -Command "$(ls $pwd\cmake-*-windows-i386\bin).Fullname"') do @(set PATHCM=%%n)
-          set PATH=D:\Qt\5.6.3\mingw49_32\bin;D:\Qt\Tools\mingw492_32\bin;
-          set PATH=%CD%\zlib;%CD%\zlib\bin;%PATH%
-          set PATH=%CD%\OpenSSL;%PATH%
-          set PATH=%PATHCM%;%PATH%
-          set PATH=C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;%PATH%
           cd build
           mingw32-make -j%NUMBER_OF_PROCESSORS%
 
       - name: Test
         shell: cmd
         run: |
-          for /f "tokens=*" %%n in ('powershell -NoLogo -Command "$(ls $pwd\cmake-*-windows-i386\bin).Fullname"') do @(set PATHCM=%%n)
-          set PATH=D:\Qt\5.6.3\mingw49_32\bin;D:\Qt\Tools\mingw492_32\bin;
-          set PATH=%CD%\zlib;%CD%\zlib\bin;%PATH%
-          set PATH=%CD%\OpenSSL;%PATH%
-          set PATH=%PATHCM%;%PATH%
-          set PATH=C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;%PATH%
           cd build
           mingw32-make test
           cmake -E remove_directory "D:/UltimMC/UltimMC"
@@ -199,38 +133,26 @@ jobs:
       - name: Install
         shell: cmd
         run: |
-          for /f "tokens=*" %%n in ('powershell -NoLogo -Command "$(ls $pwd\cmake-*-windows-i386\bin).Fullname"') do @(set PATHCM=%%n)
-          set PATH=D:\Qt\5.6.3\mingw49_32\bin;D:\Qt\Tools\mingw492_32\bin;
-          set PATH=%CD%\zlib;%CD%\zlib\bin;%PATH%
-          set PATH=%CD%\OpenSSL;%PATH%
-          set PATH=%PATHCM%;%PATH%
-          set PATH=C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;%PATH%
           cd build
           mingw32-make install
 
-      - name: Copy OpenSSL
-        shell: cmd
-        run: |
-          cp OpenSSL/ssleay32.dll D:/UltimMC/UltimMC/ssleay32.dll
-          cp OpenSSL/libeay32.dll D:/UltimMC/UltimMC/libeay32.dll
-
       - name: Upload Artifacts
-        uses: actions/upload-artifact@main
+        uses: actions/upload-artifact@v4
         with:
-          name: mmc-cracked-win32
+          name: mmc-cracked-win64
           path: "D:/UltimMC"
 
   build-mac:
     name: build-mac
-    runs-on: macos-13
+    runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@main
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
 
       - name: Cache Dependencies
-        uses: actions/cache@main
+        uses: actions/cache@v4
         with:
           path: /Users/runner/Library/Caches/Homebrew
           key: ${{ runner.os }}-deps-cache
@@ -239,6 +161,12 @@ jobs:
         run: |
           brew cleanup
           brew install qt@5
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '11'
 
       - name: Build
         run: |
@@ -259,6 +187,7 @@ jobs:
            -DLauncher_BUILD_PLATFORM=osx64-5.15.2 \
            -DLauncher_BUG_TRACKER_URL=https://github.com/UltimMC/Launcher/issues \
            -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 \
+           -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
            -DLauncher_EMBED_SECRETS=On \
            $GITHUB_WORKSPACE
 
@@ -280,7 +209,7 @@ jobs:
           chmod +x /Users/runner/work/UltimMC/build/dist/UltimMC.app/Contents/MacOS/UltimMC
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@main
+        uses: actions/upload-artifact@v4
         with:
           name: mmc-cracked-osx64
           path: /Users/runner/work/UltimMC/build/dist
