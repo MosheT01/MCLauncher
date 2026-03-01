@@ -162,6 +162,12 @@ jobs:
           brew cleanup
           brew install qt@5
 
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '11'
+
       - name: Build
         run: |
           mkdir build
