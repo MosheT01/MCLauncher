@@ -82,7 +82,7 @@ jobs:
           host: 'windows'
           target: 'desktop'
           arch: 'win64_mingw81'
-          tools: 'tools_mingw810'
+          tools: 'tools_mingw,qt.tools.win64_mingw810'
 
       - name: Setup JDK
         uses: actions/setup-java@v4
