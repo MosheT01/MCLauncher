@@ -91,6 +91,10 @@ jobs:
           java-version: '8'
           architecture: x64
 
+      - name: Install ZLIB
+        shell: cmd
+        run: C:\msys64\usr\bin\pacman -Sy --noconfirm mingw-w64-x86_64-zlib
+
       - name: Build
         shell: cmd
         run: |
@@ -109,6 +113,7 @@ jobs:
            -DLauncher_BUILD_PLATFORM=win64 ^
            -DLauncher_BUG_TRACKER_URL=https://github.com/UltimMC/Launcher/issues ^
            -DLauncher_EMBED_SECRETS=On ^
+           -DZLIB_ROOT="C:/msys64/mingw64" ^
            -G "MinGW Makefiles" ^
            ..
 
@@ -176,6 +181,7 @@ jobs:
            -DLauncher_BUILD_PLATFORM=osx64-5.15.2 \
            -DLauncher_BUG_TRACKER_URL=https://github.com/UltimMC/Launcher/issues \
            -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 \
+           -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
            -DLauncher_EMBED_SECRETS=On \
            $GITHUB_WORKSPACE
 
